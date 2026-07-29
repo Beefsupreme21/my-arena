@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Arena</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #0b0d12; color: #e8eaef; font-family: system-ui, sans-serif; }
+    canvas { display: block; width: 100%; height: 100%; }
+    .hud {
+      position: fixed; left: 1rem; top: 1rem; z-index: 1;
+      font: 600 0.85rem/1.5 system-ui, sans-serif;
+      pointer-events: none; text-shadow: 0 1px 8px #000a;
+    }
+    .hud small { display: block; font-weight: 400; color: #9aa3b2; margin-top: 0.35rem; }
+  </style>
+</head>
+<body>
+  <div class="hud">
+    <span>Arena · slice 0</span>
+    <small>WASD move · camera follows</small>
+  </div>
+  <canvas id="game"></canvas>
+
+  <script type="importmap">
+  { "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+  }}
+  </script>
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
