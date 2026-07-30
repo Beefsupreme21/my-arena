@@ -1,26 +1,30 @@
 /**
- * Slice 0 — movement + camera + bounded arena.
- * build-isometric-arpg: first vertical slice only.
+ * Dodge-only bullet hell — instant patterns + telegraphed hazards.
  */
 
 import * as THREE from "three";
+import { ARENA, ARENA_LIMIT } from "./config.js";
+import { createPlayer, damagePlayer, resetPlayer, updatePlayer } from "./player.js";
+import { createBulletManager } from "./bulletManager.js";
+import { createSpawner } from "./spawner.js";
+import { createHazardManager } from "./hazards/hazardManager.js";
+import { playerHitByBullets } from "./collision.js";
 
 const canvas = document.getElementById("game");
+const hudTitle = document.getElementById("hud-title");
+const hudStatus = document.getElementById("hud-status");
+
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0b0d12);
-scene.fog = new THREE.Fog(0x0b0d12, 20, 50);
 
-const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
-const cameraOffset = new THREE.Vector3(0, 12, 10);
-const camPos = cameraOffset.clone();
-const camLook = new THREE.Vector3();
-
-const ARENA = 12;
-const MOVE_SPEED = 6;
+const VIEW_HEIGHT = 14;
+const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
+camera.position.set(0, 20, 0);
+camera.lookAt(0, 0, 0);
 
 const ground = new THREE.Mesh(
   new THREE.PlaneGeometry(ARENA * 2, ARENA * 2),
@@ -37,72 +41,113 @@ sun.position.set(6, 12, 4);
 sun.castShadow = true;
 scene.add(sun);
 
-const player = new THREE.Mesh(
-  new THREE.BoxGeometry(0.8, 1.2, 0.8),
-  new THREE.MeshStandardMaterial({ color: 0x5ecf7a, flatShading: true })
-);
-player.position.y = 0.6;
-player.castShadow = true;
-scene.add(player);
+const player = createPlayer(scene);
+const bulletManager = createBulletManager(scene);
+const hazardManager = createHazardManager();
+const spawner = createSpawner(scene, hazardManager);
 
 const keys = {};
-window.addEventListener("keydown", (e) => { keys[e.code] = true; });
-window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+window.addEventListener("keydown", (event) => {
+  keys[event.code] = true;
+  if (event.code === "KeyR") {
+    resetRun();
+  }
+});
+window.addEventListener("keyup", (event) => {
+  keys[event.code] = false;
+});
 
-const vel = { x: 0, z: 0 };
-function readInput() {
-  vel.x = vel.z = 0;
-  if (keys.KeyA || keys.ArrowLeft) vel.x -= 1;
-  if (keys.KeyD || keys.ArrowRight) vel.x += 1;
-  if (keys.KeyW || keys.ArrowUp) vel.z -= 1;
-  if (keys.KeyS || keys.ArrowDown) vel.z += 1;
-  const len = Math.hypot(vel.x, vel.z);
-  if (len > 0) { vel.x /= len; vel.z /= len; }
+let gameState = "playing";
+let timeAlive = 0;
+let last = performance.now();
+
+function readMovementInput() {
+  let x = 0;
+  let z = 0;
+  if (keys.KeyA || keys.ArrowLeft) x -= 1;
+  if (keys.KeyD || keys.ArrowRight) x += 1;
+  if (keys.KeyW || keys.ArrowUp) z -= 1;
+  if (keys.KeyS || keys.ArrowDown) z += 1;
+  const length = Math.hypot(x, z);
+  if (length > 0) {
+    x /= length;
+    z /= length;
+  }
+  return { x, z };
 }
 
-function clampPosition(obj) {
-  const limit = ARENA - 0.6;
-  obj.position.x = THREE.MathUtils.clamp(obj.position.x, -limit, limit);
-  obj.position.z = THREE.MathUtils.clamp(obj.position.z, -limit, limit);
+function updateHud() {
+  if (gameState === "playing") {
+    const { pattern, hazard } = spawner.getHudLabels();
+    hudTitle.textContent = `Arena · ${timeAlive.toFixed(1)}s · HP ${player.hp}/${player.maxHp}`;
+    hudStatus.textContent = `WASD dodge · bullets: ${pattern} · telegraph: ${hazard}`;
+    return;
+  }
+
+  hudTitle.textContent = `Game over · ${timeAlive.toFixed(1)}s survived`;
+  hudStatus.textContent = "Press R to restart";
+}
+
+function resetRun() {
+  gameState = "playing";
+  timeAlive = 0;
+  resetPlayer(player);
+  bulletManager.clear();
+  hazardManager.clear(scene);
+  spawner.respawn();
+  updateHud();
 }
 
 function resize() {
-  const w = canvas.clientWidth;
-  const h = canvas.clientHeight;
-  renderer.setSize(w, h, false);
-  camera.aspect = w / h;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  renderer.setSize(width, height, false);
+
+  const aspect = width / height;
+  if (aspect >= 1) {
+    camera.left = -VIEW_HEIGHT * aspect;
+    camera.right = VIEW_HEIGHT * aspect;
+    camera.top = VIEW_HEIGHT;
+    camera.bottom = -VIEW_HEIGHT;
+  } else {
+    camera.left = -VIEW_HEIGHT;
+    camera.right = VIEW_HEIGHT;
+    camera.top = VIEW_HEIGHT / aspect;
+    camera.bottom = -VIEW_HEIGHT / aspect;
+  }
   camera.updateProjectionMatrix();
 }
+
 window.addEventListener("resize", resize);
 resize();
+updateHud();
 
-let last = performance.now();
 function tick(now) {
   const dt = Math.min((now - last) / 1000, 0.05);
   last = now;
 
-  readInput();
-  const moving = vel.x !== 0 || vel.z !== 0;
+  if (gameState === "playing") {
+    timeAlive += dt;
+    updatePlayer(player, readMovementInput(), dt);
+    spawner.update(dt, bulletManager, player);
+    bulletManager.update(dt, ARENA_LIMIT);
 
-  player.position.x += vel.x * MOVE_SPEED * dt;
-  player.position.z += vel.z * MOVE_SPEED * dt;
-  clampPosition(player);
+    const hazardHit = hazardManager.update(dt, {
+      player,
+      scene,
+      bulletManager,
+    });
 
-  if (moving) {
-    player.rotation.y = Math.atan2(vel.x, vel.z);
+    if (hazardHit || playerHitByBullets(player, bulletManager.getActive())) {
+      if (damagePlayer(player)) {
+        gameState = "dead";
+      }
+    }
   }
 
-  const desired = new THREE.Vector3(
-    player.position.x + cameraOffset.x,
-    cameraOffset.y,
-    player.position.z + cameraOffset.z
-  );
-  camPos.lerp(desired, 1 - Math.pow(0.001, dt));
-  camera.position.copy(camPos);
-  camLook.lerp(player.position, 1 - Math.pow(0.0005, dt));
-  camera.lookAt(camLook);
-
+  updateHud();
   renderer.render(scene, camera);
   requestAnimationFrame(tick);
 }
+
 requestAnimationFrame(tick);
