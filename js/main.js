@@ -82,7 +82,7 @@ function readMovementInput() {
 function updateHud() {
   if (gameState === "playing") {
     const { boss, pattern, hazard } = spawner.getHudLabels();
-    hudTitle.textContent = `Arena · ${timeAlive.toFixed(1)}s · HP ${player.hp}/${player.maxHp}`;
+    hudTitle.textContent = `Arena 2 · ${timeAlive.toFixed(1)}s · HP ${player.hp}/${player.maxHp}`;
     hudStatus.textContent = `${boss} · ${pattern} · ${hazard}`;
     return;
   }
