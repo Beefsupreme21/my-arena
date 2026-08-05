@@ -1,39 +1,17 @@
-# my-arena
+# my-arena-2
 
-Fresh game project: **19 game-dev skills** + **minimal playable slice**.
-
-## What's included
-
-```
-.cursor/skills/    ← all game-development skills from @MengTo/Skills
-index.html         ← entry point
-js/main.js         ← slice 0: green box, WASD, grid arena, follow camera
-```
-
-No copied box-mover code. Build from here using the skills.
+Experimental copy of [my-arena](../my-arena) for testing ideas without touching the main project.
 
 ## Run it
 
+Use a different port so both arenas can run at once:
+
 ```bash
-cd ~/Sites/my-arena
-python3 -m http.server 8080
+cd ~/Sites/my-arena-2
+python3 -m http.server 8766
 ```
 
-Open http://localhost:8080 — you should see a grid floor and a green box. **WASD** to move.
+Open http://localhost:8766 — **WASD** to move, **R** to restart, **Next Boss** to cycle encounters.
 
-> Python here is only a file server (like `php artisan serve`). The game is HTML + JavaScript + Three.js from CDN.
-
-## Open in Cursor
-
-**File → Open Folder** → `~/Sites/my-arena`
-
-Then in chat:
-
-> Use build-isometric-arpg. Add one enemy with tune-enemy-ai.
-
-## Next slices (via skills)
-
-1. `build-isometric-arpg` — combat, encounters, progression
-2. `build-game-monster-system` — enemy rigs
-3. `test-playable-web-games` — browser QA before calling it done
-# my-arena
+Original project: `~/Sites/my-arena` (typically port 8765).
+# my-arena-2
