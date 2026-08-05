@@ -8,11 +8,13 @@ import { createPlayer, damagePlayer, resetPlayer, updatePlayer } from "./player.
 import { createBulletManager } from "./bulletManager.js";
 import { createSpawner } from "./spawner.js";
 import { createHazardManager } from "./hazards/hazardManager.js";
+import { createMeleeManager } from "./melee/meleeManager.js";
 import { playerHitByBullets } from "./collision.js";
 
 const canvas = document.getElementById("game");
 const hudTitle = document.getElementById("hud-title");
 const hudStatus = document.getElementById("hud-status");
+const nextBossButton = document.getElementById("next-boss");
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -44,7 +46,8 @@ scene.add(sun);
 const player = createPlayer(scene);
 const bulletManager = createBulletManager(scene);
 const hazardManager = createHazardManager();
-const spawner = createSpawner(scene, hazardManager);
+const meleeManager = createMeleeManager();
+const spawner = createSpawner(scene, hazardManager, meleeManager);
 
 const keys = {};
 window.addEventListener("keydown", (event) => {
@@ -78,9 +81,9 @@ function readMovementInput() {
 
 function updateHud() {
   if (gameState === "playing") {
-    const { pattern, hazard } = spawner.getHudLabels();
+    const { boss, pattern, hazard } = spawner.getHudLabels();
     hudTitle.textContent = `Arena · ${timeAlive.toFixed(1)}s · HP ${player.hp}/${player.maxHp}`;
-    hudStatus.textContent = `WASD dodge · bullets: ${pattern} · telegraph: ${hazard}`;
+    hudStatus.textContent = `${boss} · ${pattern} · ${hazard}`;
     return;
   }
 
@@ -94,9 +97,23 @@ function resetRun() {
   resetPlayer(player);
   bulletManager.clear();
   hazardManager.clear(scene);
+  meleeManager.clear(scene);
   spawner.respawn();
   updateHud();
 }
+
+function cycleBoss() {
+  gameState = "playing";
+  timeAlive = 0;
+  resetPlayer(player);
+  bulletManager.clear();
+  hazardManager.clear(scene);
+  meleeManager.clear(scene);
+  spawner.cycleBoss();
+  updateHud();
+}
+
+nextBossButton.addEventListener("click", cycleBoss);
 
 function resize() {
   const width = canvas.clientWidth;
@@ -138,7 +155,9 @@ function tick(now) {
       bulletManager,
     });
 
-    if (hazardHit || playerHitByBullets(player, bulletManager.getActive())) {
+    const meleeHit = meleeManager.update(dt, { player, scene });
+
+    if (hazardHit || meleeHit || playerHitByBullets(player, bulletManager.getActive())) {
       if (damagePlayer(player)) {
         gameState = "dead";
       }

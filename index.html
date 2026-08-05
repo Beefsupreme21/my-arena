@@ -14,12 +14,25 @@
       pointer-events: none; text-shadow: 0 1px 8px #000a;
     }
     .hud small { display: block; font-weight: 400; color: #9aa3b2; margin-top: 0.35rem; }
+    .review-controls {
+      position: fixed; right: 1rem; top: 1rem; z-index: 2;
+    }
+    .review-controls button {
+      font: 600 0.8rem/1 system-ui, sans-serif;
+      color: #e8eaef; background: #1e2430; border: 1px solid #3a4560;
+      border-radius: 0.4rem; padding: 0.45rem 0.75rem; cursor: pointer;
+    }
+    .review-controls button:hover { background: #2a3344; border-color: #5ecf7a; }
+    .review-controls button:active { transform: translateY(1px); }
   </style>
 </head>
 <body>
   <div class="hud">
     <span id="hud-title">Arena · slice 1</span>
-    <small id="hud-status">WASD dodge the ring bursts</small>
+    <small id="hud-status">WASD dodge · R restart</small>
+  </div>
+  <div class="review-controls">
+    <button id="next-boss" type="button">Next Boss</button>
   </div>
   <canvas id="game"></canvas>
 
